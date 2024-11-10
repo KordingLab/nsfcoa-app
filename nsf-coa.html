@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NSF COA | Jordan Matelsky</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+    <script src="./oa.js"></script>
+</head>
+
+<body>
+    <h1>NSF COA</h1>
+    <p>
+        When submitting several types of grants it is necessary to get a list of collaborators over the past N months.
+        <br />
+        Laborious!
+    </p>
+    <p>
+        Type your name into the form below and get a list of everyone you've published a paper with with over the last
+        <span>N</span> months, along with their affiliation. <br />Glorious!
+    </p>
+
+    <hr />
+
+    <label for="oa-name">Your name:</label>
+    <input type="text" id="oa-name" name="oa-name" required>
+    <label for="oa-months">Months:</label>
+    <input type="number" id="oa-months" name="oa-months" value=48 min="0" required>
+    <button onclick="getCollaborators()">Submit</button>
+
+    <hr />
+    <div id="output-messages"></div>
+    <div id="output-table"></div>
+
+    <style>
+        .loading {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #09f;
+            border-radius: 50%;
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</body>
+
+<script>
+
+    const LOADING_MESSAGES = [
+        "Downloading citations...",
+        "This can take a few minutes for long timespans or lots of publications...",
+        "Please be patient...",
+        "This is a lot of data...",
+        "Wow {name} really publishes a lot...",
+        "Hope this grant deadline isn't too soon...",
+        "Still working...",
+    ]
+
+    function outputLog(message) {
+        const output = document.getElementById('output-messages');
+        output.innerHTML += `<p>${message}</p>`;
+    }
+
+    function getCollaborators() {
+        // Disable button
+        document.querySelector('button').disabled = true;
+
+        // Add spinner to button
+        document.querySelector('button').innerHTML = `
+            <span class="loading" role="status" aria-hidden="true"></span>
+        `;
+
+        const name = document.getElementById('oa-name').value;
+        const months = parseInt(document.getElementById('oa-months').value);
+
+        // Queue up loading messages to let the user know things
+        // are still happening. These intervals will be cleared when the fetch
+        // completes.
+        let timeouts = [];
+        for (let i = 0; i < LOADING_MESSAGES.length; i++) {
+            timeouts.push(setTimeout(() => {
+                outputLog(LOADING_MESSAGES[i].replace('{name}', name));
+            }, i * 5000));
+        }
+
+
+        if (!name || !months) {
+            outputLog('Please enter your name and the number of months to search.');
+            return;
+        }
+
+        fetch(`/nsf-coa-lookup?author=${name}&months=${months}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    outputLog(data.error);
+                    return;
+                }
+
+                outputLog(`Found ${data.collaborators.length} collaborators for ${name} over the last ${months} months.`);
+
+                // Create table
+                const table = document.getElementById('output-table');
+                table.innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>First</th>
+                                <th>Middle</th>
+                                <th>Last</th>
+                                <th>Affiliation</th>
+                            </tr>
+                        </thead>
+                        <tbody id="output-table-body"></tbody>
+                    </table>
+                `;
+                data.collaborators.forEach(collaborator => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${collaborator.first}</td>
+                        <td>${collaborator.middle}</td>
+                        <td>${collaborator.last}</td>
+                        <td>${collaborator.institution}</td>
+                    `;
+                    table.querySelector('tbody').appendChild(row);
+                });
+
+                // Create CSV download link
+                const csv = data.collaborators.map(collaborator => {
+                    return `${collaborator.first},${collaborator.middle},${collaborator.last},${collaborator.institution}`;
+                }).join('\n');
+                const csvBlob = new Blob([csv], { type: 'text/csv' });
+                const csvUrl = URL.createObjectURL(csvBlob);
+                const csvLink = document.createElement('a');
+                csvLink.href = csvUrl;
+                csvLink.download = `${name}-collaborators-${months}months.csv`;
+                csvLink.textContent = 'Download CSV';
+                table.insertBefore(csvLink, table.firstChild);
+
+                // Enable button
+                document.querySelector('button').disabled = false;
+                document.querySelector('button').innerHTML = 'Submit';
+
+            })
+            .catch(error => {
+                outputLog('An error occurred while fetching collaborators.');
+                console.error(error);
+
+                // Enable button
+                document.querySelector('button').disabled = false;
+                document.querySelector('button').innerHTML = 'Submit';
+            })
+            .finally(() => {
+                // Clear loading messages
+                timeouts.forEach(timeout => clearTimeout(timeout));
+            });
+
+
+    }
+
+
+</script>
+
+</html>
