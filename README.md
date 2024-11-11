@@ -13,7 +13,7 @@ The app uses the [OpenAlex](https://openalex.org/) API to pull in collaborators 
 This repository uses the [`uv`](https://docs.astral.sh/uv/) tool to manage the development environment. To install `uv`, run the following command:
 
 ```bash
-curl -fsSL https://uv.astral.sh | bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 Then run a development server locally with uvicorn:
