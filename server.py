@@ -1,7 +1,17 @@
+import re
 import fastapi
-import scholarversary as sv
+from openalex import OpenAlex
 import datetime
 from functools import cache
+import os
+
+
+def get_mailto():
+    return os.environ.get("OPENALEX_MAILTO")
+
+
+def is_orcid(identifier):
+    return re.match(r"^(\d{4}-){3}\d{3}(\d|X)$", identifier) is not None
 
 
 app = fastapi.FastAPI()
@@ -14,7 +24,7 @@ def read_root():
 
 @cache
 def get_insts(auth_id):
-    oa = sv.OpenAlex()
+    oa = OpenAlex(mailto=get_mailto())
     return oa.get_author_institutions(auth_id)
 
 
@@ -28,8 +38,11 @@ async def get_nsf_coa(author: str, months: int = 48):
     """
     Get a list of collaborators + affils from the last N months for a given author
     """
-    oa = sv.OpenAlex()
-    author_id = oa.get_author_uri_by_search(author)
+    oa = OpenAlex(mailto=get_mailto())
+    if is_orcid(author):
+        author_id = oa.get_author_uri_by_orcid(author)
+    else:
+        author_id = oa.get_author_uri_by_search(author)
     n_months_ago_str = (
         datetime.datetime.now() - datetime.timedelta(days=30 * months)
     ).strftime("%Y-%m-%d")
@@ -41,7 +54,7 @@ async def get_nsf_coa(author: str, months: int = 48):
     )
     authorships = [auth for work in works for auth in work["authorships"]]
     # Set unique on author['id']:
-    authorships = {auth["author"]["id"]: auth for auth in authorships}.values()
+    authorships = [auth for auth in authorships]
 
     collaborators = []
     for author in authorships:

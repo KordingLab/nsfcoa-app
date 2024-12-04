@@ -10,5 +10,7 @@ RUN uv sync --no-dev
 # Copy in the rest of the files
 ADD . /app
 
+ENV OPENALEX_MAILTO="-kordinglab-nsf-coa@matelsky.com"
+
 # Run the application
 CMD ["uv", "run", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]

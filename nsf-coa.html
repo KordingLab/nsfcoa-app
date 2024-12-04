@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NSF COA | Jordan Matelsky</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
-    <script src="./oa.js"></script>
 </head>
 
 <body>
@@ -30,14 +29,16 @@
         Laborious!
     </p>
     <p>
-        Type your name into the form below and get a list of everyone you've published a paper with with over the last
+        Type your name or ORCID into the form below and get a list of everyone you've published a paper with with over
+        the last
         <span>N</span> months, along with their affiliation. <br />Glorious!
     </p>
 
     <hr />
 
-    <label for="oa-name">Your name:</label>
-    <input type="text" id="oa-name" name="oa-name" required>
+    <label for="oa-name">Your name or ORCID:</label>
+    <input type="text" id="oa-name" name="oa-name" style="width:100%" required
+        placeholder="'Jordan Matelsky' or '0000-0002-9470-760X'">
     <label for="oa-months">Months:</label>
     <input type="number" id="oa-months" name="oa-months" value=48 min="0" required>
     <button onclick="getCollaborators()">Submit</button>

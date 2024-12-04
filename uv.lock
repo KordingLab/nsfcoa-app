@@ -124,6 +124,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "openalex" },
     { name = "scholarversary" },
     { name = "uvicorn" },
 ]
@@ -131,8 +132,22 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115.4" },
+    { name = "openalex", specifier = ">=0.1.0" },
     { name = "scholarversary", specifier = ">=0.1.0" },
     { name = "uvicorn", specifier = ">=0.32.0" },
+]
+
+[[package]]
+name = "openalex"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1d/af/3c488682093d4e791e43615de44bb699982c852a5204956b7e627ff5f2a4/openalex-0.1.0.tar.gz", hash = "sha256:5644574eac91c6285535498988eb03c57f7a88c5eaf03897e8f5ee6802215cba", size = 4399 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/69/55/1c9bd5f95cca09355cf25661332cf078c6c29f8c6cbd96c0b17a59578bb6/openalex-0.1.0-py3-none-any.whl", hash = "sha256:c0b7c23c4c4627b01834627112212176d853f6115f5b032564e3252f8bec3428", size = 4595 },
 ]
 
 [[package]]
