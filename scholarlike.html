@@ -118,6 +118,32 @@
             renderPapers(PAPERS);
             renderChart(PAPERS);
             renderHIndexChart();
+            populateCoauthors(PAPERS);
+        }
+
+        function populateCoauthors(PAPERS) {
+            const coauthors = PAPERS.flatMap(paper => paper.authors).reduce((acc, author) => {
+                acc[author] = acc[author] ? acc[author] + 1 : 1;
+                return acc;
+            }, {});
+            const coauthorsList = Object.entries(coauthors).sort((a, b) => b[1] - a[1]);
+            const container = document.getElementById("coauthors-container");
+            container.innerHTML = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Coauthor</th>
+                        <th>Collaboration Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${coauthorsList.map(([author, count]) => `
+                    <tr>
+                        <td>${author}</td>
+                        <td>${count}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
         }
 
         function toggleSort(criteria) {
@@ -254,27 +280,6 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
             crossorigin="anonymous"></script>
-
-        <script>
-            window.setTimeout(() => {
-                let coauthors = [];
-                PAPERS.forEach(paper => {
-                    paper.authors.forEach(a => coauthors.push({
-                        name: a
-                    }));
-
-                });
-                coauthors = coauthors.filter((v, i, a) => a.findIndex(t => (t.name === v.name)) === i);
-                coauthors.forEach(c => {
-                    document.getElementById("coauthors-container").innerHTML += `
-                    <div>${c.name}</div>`;
-                });
-
-
-            }, 100);
-
-
-        </script>
 </body>
 
 </html>
