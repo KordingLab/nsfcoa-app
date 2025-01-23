@@ -113,6 +113,8 @@
                     }]
                 },
                 options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         y: {
                             beginAtZero: true
@@ -157,8 +159,8 @@
                 <div class="py-3">
                     <h3>Cited by</h3>
                 </div>
-                <div class="h-100 card">
-                    <canvas id="citationChart"></canvas>
+                <div class="card">
+                    <canvas id="citationChart" style="max-height: 512px"></canvas>
                 </div>
                 <div class="py-3">
                     <h3>Coauthors</h3>
