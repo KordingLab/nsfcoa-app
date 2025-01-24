@@ -69,7 +69,7 @@ async def get_author_by_orcid(orcid: str):
         "author": {
             "name": author_details.get("display_name", "Unknown Author"),
             "orcid": orcid,
-            "affiliations": author_details.get("institutions", []),
+            "affiliations": author_details.get("affiliations", []),
         },
         "papers": papers,
     }

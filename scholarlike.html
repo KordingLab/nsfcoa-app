@@ -11,8 +11,36 @@
     <script
         src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 
+    <style>
+        .chart-container {
+            width: 100%;
+            height: 300px;
+        }
+
+        .col {
+            overflow: hidden
+        }
+    </style>
+
 
     <script>
+        async function fetchAuthorDetails(orcid) {
+            try {
+                const response = await fetch(`/author-by-orcid?orcid=${orcid}`);
+                const data = await response.json();
+                return {
+                    name: data.author.name || "Unknown Author",
+                    affiliations: data.author.affiliations.map(affil => affil.institution.display_name).join(", ") || "Unknown Affiliation"
+                };
+            } catch (error) {
+                console.error('Error fetching author details:', error);
+                return {
+                    name: "Unknown Author",
+                    affiliations: "Unknown Affiliation"
+                };
+            }
+        }
+
         async function fetchPapers() {
             try {
                 const urlParams = new URLSearchParams(window.location.search);
@@ -28,9 +56,21 @@
                         citations: paper.citation_count
                     }));
                 }
+
             } catch (error) {
                 console.error('Error fetching papers:', error);
                 return [];
+            }
+
+            async function fetchCurrentUserName() {
+                try {
+                    const response = await fetch('/author-by-orcid?orcid=0000-0000-0000-0000'); // Example ORCID
+                    const data = await response.json();
+                    return data.author.name || "Unknown User";
+                } catch (error) {
+                    console.error('Error fetching user name:', error);
+                    return "Unknown User";
+                }
             }
         }
 
@@ -94,13 +134,13 @@
                             annotations: {
                                 box1: {
                                     type: 'box',
-                                    xMin: 0,
+                                    xMin: -0.5,
                                     xMax: hIndex - 1,
                                     yMin: 0,
                                     yMax: hIndex,
                                     backgroundColor: 'rgba(255, 99, 132, 0.25)',
                                     borderColor: 'rgba(255, 99, 132, 1)',
-                                    borderWidth: 1
+                                    borderWidth: 1,
                                 }
                             }
                         }
@@ -119,6 +159,11 @@
             renderChart(PAPERS);
             renderHIndexChart();
             populateCoauthors(PAPERS);
+            const urlParams = new URLSearchParams(window.location.search);
+            const orcid = urlParams.get('orcid') || '0000-0000-0000-0000'; // Default ORCID for testing
+            const authorDetails = await fetchAuthorDetails(orcid);
+            document.getElementById('author-name').textContent = authorDetails.name;
+            document.getElementById('author-description').textContent = authorDetails.affiliations;
         }
 
         function populateCoauthors(PAPERS) {
@@ -218,6 +263,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    aspectRatio: 1,
                     scales: {
                         y: {
                             beginAtZero: true
@@ -240,9 +286,8 @@
         <div class="row">
             <div class="col-8">
                 <div class="p-3">
-                    <h1>Jordan Matelsky</h1>
-                    <p>UPenn</p>
-                    <p>Neuroscience!</p>
+                    <h1 id="author-name">Loading...</h1>
+                    <p id="author-description"></p>
                 </div>
                 <br />
                 <table class="table">
@@ -259,14 +304,15 @@
             </div>
 
             <div class="col">
-                <div class="card">
-                    <canvas id="hIndexChart" style="max-height: 512px"></canvas>
-                </div>
                 <div class="py-3">
                     <h3>Cited by</h3>
                 </div>
                 <div class="card">
-                    <canvas id="citationChart" style="max-height: 512px"></canvas>
+                    <canvas id="citationChart" class="chart-container"></canvas>
+                </div>
+                <br />
+                <div class="card">
+                    <canvas id="hIndexChart" class="chart-container"></canvas>
                 </div>
                 <div class="py-3">
                     <h3>Coauthors</h3>
