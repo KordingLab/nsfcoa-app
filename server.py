@@ -60,6 +60,9 @@ async def search_authors(name: str):
                     ).get("display_name", "Unknown Affiliation")
                     for affil in author.get("affiliations", [])
                 ],
+                "orcid": (
+                    author.get("orcid", "/Unknown-ORCID") or "/Unknown-ORCID"
+                ).split("/")[-1],
             }
             for author in authors
         ]

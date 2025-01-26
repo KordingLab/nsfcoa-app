@@ -184,7 +184,7 @@
                 <tbody>
                     ${coauthorsList.map(([author, count]) => `
                     <tr>
-                        <td>${author}</td>
+                        <td><a href="/search?search=${encodeURIComponent(author)}">${author}</a></td>
                         <td>${count}</td>
                     </tr>`).join('')}
                 </tbody>
@@ -282,7 +282,7 @@
 <body>
 
 
-    <div class="container-fluid">
+    <div class="container">
         <div class="row">
             <div class="col-8">
                 <div class="p-3">

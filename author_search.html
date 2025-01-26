@@ -15,6 +15,10 @@
     <script>
         async function searchAuthors() {
             const query = document.getElementById('search-input').value;
+            // Update the URL with the search query
+            const newUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?search=${encodeURIComponent(query)}`;
+            window.history.pushState({ path: newUrl }, '', newUrl);
+
             const response = await fetch(`/search-authors?name=${encodeURIComponent(query)}`);
             const data = await response.json();
             renderAuthors(data.authors);
@@ -23,11 +27,13 @@
         function renderAuthors(authors) {
             const resultsContainer = document.getElementById('results');
             resultsContainer.innerHTML = authors.map(author => `
-                <div class="author">
-                    <h5>${author.name}</h5>
-                    <p>${author.affiliations.join(', ')}</p>
-                </div>
-            `).join('');
+        <div class="card author-card mb-3" style="cursor: pointer;" onclick="window.location.href='scholarlike?orcid=${author.orcid}'">
+            <div class="card-body">
+                <h5 class="card-title">${author.name}</h5>
+                <p class="card-text">${author.affiliations.join(', ')}</p>
+            </div>
+        </div>
+    `).join('');
         }
 
         window.onload = () => {
