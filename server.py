@@ -33,9 +33,37 @@ async def render_nsf_template():
     return fastapi.responses.HTMLResponse(open("nsf-coa.html").read())
 
 
+@app.get("/search")
+async def render_author_search():
+    return fastapi.responses.HTMLResponse(open("author_search.html").read())
+
+
 @app.get("/scholarlike")
 async def scholarlike():
     return fastapi.responses.HTMLResponse(open("scholarlike.html").read())
+
+
+@app.get("/search-authors")
+async def search_authors(name: str):
+    """
+    Search for authors by name
+    """
+    oa = OpenAlex(mailto=get_mailto())
+    authors = oa.get_authors(filter={"display_name.search": name})
+    return {
+        "authors": [
+            {
+                "name": author.get("display_name", "Unknown Author"),
+                "affiliations": [
+                    affil.get(
+                        "institution", {"display_name": "Unknown Institution"}
+                    ).get("display_name", "Unknown Affiliation")
+                    for affil in author.get("affiliations", [])
+                ],
+            }
+            for author in authors
+        ]
+    }
 
 
 @app.get("/author-by-orcid")
