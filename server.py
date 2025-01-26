@@ -93,6 +93,10 @@ async def get_author_by_orcid(orcid: str):
                 ],
                 "publication_date": work.get("publication_date", "Unknown Date"),
                 "citation_count": work.get("cited_by_count", 0),
+                "counts_by_year": {
+                    v["year"]: v["cited_by_count"]
+                    for v in work.get("counts_by_year", {})
+                },
             }
         )
 
@@ -106,6 +110,7 @@ async def get_author_by_orcid(orcid: str):
     }
 
 
+@app.get("/nsf-coa-lookup")
 async def get_nsf_coa(author: str, months: int = 48):
     """
     Get a list of collaborators + affils from the last N months for a given author
@@ -126,7 +131,8 @@ async def get_nsf_coa(author: str, months: int = 48):
     )
     authorships = [auth for work in works for auth in work["authorships"]]
     # Set unique on author['id']:
-    authorships = [auth for auth in authorships]
+    authorships = {auth["author"]["id"]: auth for auth in authorships}.values()
+    authorships = list(authorships)
 
     collaborators = []
     for author in authorships:

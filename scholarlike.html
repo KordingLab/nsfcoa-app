@@ -53,24 +53,14 @@
                         authors: paper.authors || ["Unknown Author"],
                         year: new Date(paper.publication_date).getFullYear(),
                         journal: "Unknown Journal",
-                        citations: paper.citation_count
+                        citations: paper.citation_count,
+                        counts_by_year: paper.counts_by_year || {}
                     }));
                 }
 
             } catch (error) {
                 console.error('Error fetching papers:', error);
                 return [];
-            }
-
-            async function fetchCurrentUserName() {
-                try {
-                    const response = await fetch('/author-by-orcid?orcid=0000-0000-0000-0000'); // Example ORCID
-                    const data = await response.json();
-                    return data.author.name || "Unknown User";
-                } catch (error) {
-                    console.error('Error fetching user name:', error);
-                    return "Unknown User";
-                }
             }
         }
 
@@ -149,6 +139,50 @@
             });
         }
 
+        function calculateTotalCitationsByYear(papers) {
+            const currentYear = new Date().getFullYear();
+            const years = Array.from({ length: 10 }, (_, i) => currentYear - i).reverse();
+            const totalCitations = years.map(year => {
+                return papers.reduce((sum, paper) => {
+                    console.log(paper.counts_by_year)
+                    return sum + (paper.counts_by_year[year] || 0);
+                }, 0);
+            });
+            return { years, totalCitations };
+        }
+
+        function renderTotalCitationsChart() {
+            if (!PAPERS || PAPERS.length === 0) {
+                console.error('No papers data available for rendering total citations chart.');
+                return;
+            }
+            const { years, totalCitations } = calculateTotalCitationsByYear(PAPERS);
+            const ctx = document.getElementById('totalCitationsChart').getContext('2d');
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'Total Citations by Year',
+                        data: totalCitations,
+                        backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                        borderColor: 'rgba(255, 159, 64, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    aspectRatio: 1,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
 
         let PAPERS = [];
         let currentSort = { criteria: null, ascending: true };
@@ -158,6 +192,7 @@
             renderPapers(PAPERS);
             renderChart(PAPERS);
             renderHIndexChart();
+            renderTotalCitationsChart();
             populateCoauthors(PAPERS);
             const urlParams = new URLSearchParams(window.location.search);
             const orcid = urlParams.get('orcid') || '0000-0000-0000-0000'; // Default ORCID for testing
@@ -308,12 +343,23 @@
                     <h3>Cited by</h3>
                 </div>
                 <div class="card">
+                    <canvas id="totalCitationsChart" class="chart-container"></canvas>
+                </div>
+                <small class="text-muted">New citations per year (past 10 years).</small>
+                <br />
+                <br />
+                <div class="card">
                     <canvas id="citationChart" class="chart-container"></canvas>
                 </div>
+                <small class="text-muted">Paper citations by publication year.</small>
+                <br />
                 <br />
                 <div class="card">
                     <canvas id="hIndexChart" class="chart-container"></canvas>
                 </div>
+                <small class="text-muted">h-index computation (log scale).</small>
+                <br />
+                <br />
                 <div class="py-3">
                     <h3>Coauthors</h3>
                 </div>
