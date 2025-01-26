@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Scholarlike</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js">
+    </script>
+
+
+    <script>
+        async function fetchPapers() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const orcid = urlParams.get('orcid') || '0000-0000-0000-0000'; // Default ORCID for testing
+                const response = await fetch(`/author-by-orcid?orcid=${orcid}`);
+                const data = await response.json();
+                if (data.papers) {
+                    return data.papers.map(paper => ({
+                        title: paper.title,
+                        authors: paper.authors || ["Unknown Author"],
+                        year: new Date(paper.publication_date).getFullYear(),
+                        journal: "Unknown Journal",
+                        citations: paper.citation_count
+                    }));
+                }
+                return [];
+            } catch (error) {
+                console.error('Error fetching papers:', error);
+                return [];
+            }
+        }
+
+        let PAPERS = [];
+        let currentSort = { criteria: null, ascending: true };
+
+        async function initialize() {
+            PAPERS = await fetchPapers();
+            renderPapers(PAPERS);
+            renderChart(PAPERS);
+        }
+
+        function toggleSort(criteria) {
+            if (currentSort.criteria === criteria) {
+                currentSort.ascending = !currentSort.ascending;
+            } else {
+                currentSort.criteria = criteria;
+                currentSort.ascending = true;
+            }
+            sortPapers(PAPERS, criteria, currentSort.ascending);
+            updateCaret(criteria, currentSort.ascending);
+        }
+
+        function sortPapers(PAPERS, criteria, ascending) {
+            PAPERS.sort((a, b) => {
+                if (a[criteria] < b[criteria]) return ascending ? -1 : 1;
+                if (a[criteria] > b[criteria]) return ascending ? 1 : -1;
+                return 0;
+            });
+            renderPapers(PAPERS);
+        }
+
+        function updateCaret(criteria, ascending) {
+            const carets = document.querySelectorAll('th span');
+            carets.forEach(caret => caret.textContent = '');
+            const caret = document.getElementById(`${criteria}-caret`);
+            caret.textContent = ascending ? '▲' : '▼';
+        }
+
+        function renderPapers(PAPERS) {
+            const tbody = document.getElementById("paper-tbody");
+            tbody.innerHTML = "";
+            PAPERS.forEach(paper => {
+                let authorlist = "";
+                if (paper.authors.length > 3) {
+                    authorlist = paper.authors.slice(0, 3).join(", ") + " et al.";
+                } else {
+                    authorlist = paper.authors.join(", ");
+                }
+                tbody.innerHTML += `
+                <tr>
+                    <td><div><a href="#">${paper.title}</a></div>
+                        ${authorlist}<br />
+                        ${paper.journal}
+                        </td>
+                    <td>${paper.citations}</td>
+                    <td>${paper.year}</td>
+                </tr>`;
+            });
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('citationChart').getContext('2d');
+            const years = [...new Set(PAPERS.map(paper => paper.year))].sort((a, b) => a - b);
+            const citations = years.map(year => {
+                return PAPERS.filter(paper => paper.year === year)
+                    .reduce((sum, paper) => sum + paper.citations, 0);
+            });
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'Citations',
+                        data: citations,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        window.onload = async () => {
+            await initialize();
+        };
+    </script>
+</head>
+
+<body>
+
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-8">
+                <div class="p-3">
+                    <h1>Jordan Matelsky</h1>
+                    <p>UPenn</p>
+                    <p>Neuroscience!</p>
+                </div>
+                <br />
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th onclick="toggleSort('title')">Title <span id="title-caret"></span></th>
+                            <th onclick="toggleSort('citations')">Citations <span id="citations-caret"></span></th>
+                            <th onclick="toggleSort('year')">Year <span id="year-caret"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="paper-tbody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="col">
+                <div class="py-3">
+                    <h3>Cited by</h3>
+                </div>
+                <div class="h-100 card">
+                    <canvas id="citationChart"></canvas>
+                </div>
+                <div class="py-3">
+                    <h3>Coauthors</h3>
+                </div>
+                <div class="h-50 card">
+                    <div id="coauthors-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+            crossorigin="anonymous"></script>
+
+        <script>
+            window.setTimeout(() => {
+                let coauthors = [];
+                PAPERS.forEach(paper => {
+                    paper.authors.forEach(a => coauthors.push({
+                        name: a
+                    }));
+
+                });
+                coauthors = coauthors.filter((v, i, a) => a.findIndex(t => (t.name === v.name)) === i);
+                coauthors.forEach(c => {
+                    document.getElementById("coauthors-container").innerHTML += `
+                    <div>${c.name}</div>`;
+                });
+
+
+            }, 100);
+
+
+        </script>
+</body>
+
+</html>
