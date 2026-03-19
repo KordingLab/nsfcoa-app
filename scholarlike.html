@@ -77,6 +77,10 @@
             return hIndex;
         }
 
+        function getPapersWithValidYears(papers) {
+            return papers.filter(paper => Number.isFinite(paper.year));
+        }
+
         function renderHIndexChart() {
             const ctx = document.getElementById('hIndexChart').getContext('2d');
             const citations = PAPERS.map(paper => paper.citations).sort((a, b) => a - b);
@@ -139,6 +143,83 @@
             });
         }
 
+        function renderPublicationAgeScatterChart() {
+            const papersWithYears = getPapersWithValidYears(PAPERS);
+            if (papersWithYears.length === 0) {
+                return;
+            }
+
+            const currentYear = new Date().getFullYear();
+            const ctx = document.getElementById('publicationAgeScatterChart').getContext('2d');
+            const points = papersWithYears
+                .filter(paper => paper.citations > 0)
+                .map(paper => {
+                    const publicationAge = Math.max(0, currentYear - paper.year);
+                    return {
+                        x: Math.min(10, publicationAge),
+                        y: paper.citations,
+                        title: paper.title,
+                        year: paper.year,
+                        publicationAge
+                    };
+                });
+
+            if (points.length === 0) {
+                return;
+            }
+
+            new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Paper citations by years since publication',
+                        data: points,
+                        backgroundColor: 'rgba(54, 162, 235, 0.55)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    aspectRatio: 1,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            beginAtZero: true,
+                            max: 10,
+                            title: {
+                                display: true,
+                                text: 'Years Since Publication (capped at 10)'
+                            },
+                            ticks: {
+                                precision: 0
+                            }
+                        },
+                        y: {
+                            type: 'logarithmic',
+                            title: {
+                                display: true,
+                                text: 'Citations'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label(context) {
+                                    const point = context.raw;
+                                    const ageLabel = point.publicationAge > 10 ? '10+ years' : `${point.publicationAge} years`;
+                                    return `${point.title} (${point.year}): ${point.y} citations after ${ageLabel}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         function calculateTotalCitationsByYear(papers) {
             const currentYear = new Date().getFullYear();
             const years = Array.from({ length: 10 }, (_, i) => currentYear - i).reverse();
@@ -192,6 +273,7 @@
             renderPapers(PAPERS);
             renderChart(PAPERS);
             renderHIndexChart();
+            renderPublicationAgeScatterChart();
             renderTotalCitationsChart();
             populateCoauthors(PAPERS);
             const urlParams = new URLSearchParams(window.location.search);
@@ -358,6 +440,12 @@
                     <canvas id="hIndexChart" class="chart-container"></canvas>
                 </div>
                 <small class="text-muted">h-index computation (log scale).</small>
+                <br />
+                <br />
+                <div class="card">
+                    <canvas id="publicationAgeScatterChart" class="chart-container"></canvas>
+                </div>
+                <small class="text-muted">Each point is a cited paper: x = years since publication capped at 10, y = citations on a log scale.</small>
                 <br />
                 <br />
                 <div class="py-3">
