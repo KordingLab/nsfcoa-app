@@ -14,6 +14,32 @@ def is_orcid(identifier):
     return re.match(r"^(\d{4}-){3}\d{3}(\d|X)$", identifier) is not None
 
 
+def split_name(name):
+    name_split = name.split()
+
+    if not name_split:
+        return "Unknown", "", ""
+    if len(name_split) == 1:
+        return name_split[0], "", ""
+    if len(name_split) == 2:
+        first, last = name_split
+        return first, "", last
+    if len(name_split) == 3:
+        first, middle, last = name_split
+        return first, middle, last
+    if len(name_split) == 4:
+        first, middle = name_split[:2]
+        last = " ".join(name_split[2:])
+        return first, middle, last
+
+    return name_split[0], " ".join(name_split[1:-1]), name_split[-1]
+
+
+def get_publication_year(publication_date):
+    match = re.match(r"^(\d{4})", publication_date or "")
+    return match.group(1) if match else ""
+
+
 app = fastapi.FastAPI()
 
 
@@ -129,43 +155,56 @@ async def get_nsf_coa(author: str, months: int = 48):
             "publication_date": f">{n_months_ago_str}",
         }
     )
-    authorships = [auth for work in works for auth in work["authorships"]]
-    # Set unique on author['id']:
-    authorships = {auth["author"]["id"]: auth for auth in authorships}.values()
-    authorships = list(authorships)
+    collaborator_lookup = {}
+    for work in works:
+        publication_date = work.get("publication_date") or ""
+        for authorship in work.get("authorships", []):
+            collaborator = authorship.get("author", {})
+            collaborator_id = collaborator.get("id")
+            if not collaborator_id or collaborator_id == author_id:
+                continue
+
+            existing = collaborator_lookup.get(collaborator_id)
+            if existing is None:
+                collaborator_lookup[collaborator_id] = {
+                    "author": collaborator,
+                    "institutions": authorship.get("institutions", []),
+                    "last_interaction_date": publication_date,
+                }
+                continue
+
+            if authorship.get("institutions") and not existing["institutions"]:
+                existing["institutions"] = authorship["institutions"]
+
+            if publication_date > existing["last_interaction_date"]:
+                existing["last_interaction_date"] = publication_date
 
     collaborators = []
-    for author in authorships:
+    for collaborator in collaborator_lookup.values():
         name = (
-            author["author"]["display_name"]
-            if isinstance(author, dict) and "author" in author
+            collaborator["author"]["display_name"]
+            if isinstance(collaborator, dict) and "author" in collaborator
             else "Unknown"
         )
         inst = (
-            author["institutions"]
-            if isinstance(author, dict) and "institutions" in author
+            collaborator["institutions"]
+            if isinstance(collaborator, dict) and "institutions" in collaborator
             else []
         )
         inst = inst[0]["display_name"] if inst else None
         if inst is None:
             try:
-                insts = get_insts(author.get("author", {}).get("id", "").split("/")[-1])
+                insts = get_insts(
+                    collaborator.get("author", {}).get("id", "").split("/")[-1]
+                )
                 if insts:
                     inst = insts[0]["institution"]["display_name"]
-            except:
+            except Exception:
                 inst = ""
         if inst is None:
             continue
 
-        name_split = name.split()
-        if len(name_split) == 3:
-            first, middle, last = name_split
-        elif len(name_split) == 2:
-            first, last = name_split
-            middle = None
-        elif len(name_split) == 4:
-            first, middle = name_split[:2]
-            last = " ".join(name_split[2:])
+        first, middle, last = split_name(name)
 
         collaborators.append(
             {
@@ -173,6 +212,9 @@ async def get_nsf_coa(author: str, months: int = 48):
                 "middle": middle or "",
                 "last": last,
                 "institution": inst,
+                "last_interaction_year": get_publication_year(
+                    collaborator["last_interaction_date"]
+                ),
             }
         )
 
