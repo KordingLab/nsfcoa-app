@@ -31,7 +31,7 @@
     <p>
         Type your name or ORCID into the form below and get a list of everyone you've published a paper with with over
         the last
-        <span>N</span> months, along with their affiliation. <br />Glorious!
+        <span>N</span> months, along with their affiliation and latest shared publication year. <br />Glorious!
     </p>
 
     <hr />
@@ -83,14 +83,20 @@
         output.innerHTML += `<p>${message}</p>`;
     }
 
-    function getCollaborators() {
-        // Disable button
-        document.querySelector('button').disabled = true;
+    function setButtonLoadingState(isLoading) {
+        const button = document.querySelector('button');
+        button.disabled = isLoading;
+        button.innerHTML = isLoading
+            ? '<span class="loading" role="status" aria-hidden="true"></span>'
+            : 'Submit';
+    }
 
-        // Add spinner to button
-        document.querySelector('button').innerHTML = `
-            <span class="loading" role="status" aria-hidden="true"></span>
-        `;
+    function escapeCsvValue(value) {
+        return `"${String(value ?? "").replace(/"/g, '""')}"`;
+    }
+
+    function getCollaborators() {
+        setButtonLoadingState(true);
 
         const name = document.getElementById('oa-name').value;
         const months = parseInt(document.getElementById('oa-months').value);
@@ -108,10 +114,11 @@
 
         if (!name || !months) {
             outputLog('Please enter your name and the number of months to search.');
+            setButtonLoadingState(false);
             return;
         }
 
-        fetch(`/nsf-coa-lookup?author=${name}&months=${months}`)
+        fetch(`/nsf-coa-lookup?author=${encodeURIComponent(name)}&months=${months}`)
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
@@ -131,6 +138,7 @@
                                 <th>Middle</th>
                                 <th>Last</th>
                                 <th>Affiliation</th>
+                                <th>Last Interaction Year</th>
                             </tr>
                         </thead>
                         <tbody id="output-table-body"></tbody>
@@ -143,14 +151,31 @@
                         <td>${collaborator.middle}</td>
                         <td>${collaborator.last}</td>
                         <td>${collaborator.institution}</td>
+                        <td>${collaborator.last_interaction_year}</td>
                     `;
                     table.querySelector('tbody').appendChild(row);
                 });
 
                 // Create CSV download link
-                const csv = data.collaborators.map(collaborator => {
-                    return `${collaborator.first},${collaborator.middle},${collaborator.last},${collaborator.institution}`;
-                }).join('\n');
+                const csvRows = [
+                    [
+                        'First',
+                        'Middle',
+                        'Last',
+                        'Affiliation',
+                        'Last Interaction Year'
+                    ],
+                    ...data.collaborators.map(collaborator => ([
+                        collaborator.first,
+                        collaborator.middle,
+                        collaborator.last,
+                        collaborator.institution,
+                        collaborator.last_interaction_year
+                    ]))
+                ];
+                const csv = csvRows
+                    .map(row => row.map(escapeCsvValue).join(','))
+                    .join('\n');
                 const csvBlob = new Blob([csv], { type: 'text/csv' });
                 const csvUrl = URL.createObjectURL(csvBlob);
                 const csvLink = document.createElement('a');
@@ -159,22 +184,15 @@
                 csvLink.textContent = 'Download CSV';
                 table.insertBefore(csvLink, table.firstChild);
 
-                // Enable button
-                document.querySelector('button').disabled = false;
-                document.querySelector('button').innerHTML = 'Submit';
-
             })
             .catch(error => {
                 outputLog('An error occurred while fetching collaborators.');
                 console.error(error);
-
-                // Enable button
-                document.querySelector('button').disabled = false;
-                document.querySelector('button').innerHTML = 'Submit';
             })
             .finally(() => {
                 // Clear loading messages
                 timeouts.forEach(timeout => clearTimeout(timeout));
+                setButtonLoadingState(false);
             });
 
 
