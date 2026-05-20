@@ -40,6 +40,12 @@ def get_publication_year(publication_date):
     return match.group(1) if match else ""
 
 
+def normalize_orcid(orcid):
+    if not orcid:
+        return ""
+    return str(orcid).rstrip("/").split("/")[-1]
+
+
 app = fastapi.FastAPI()
 
 
@@ -86,9 +92,7 @@ async def search_authors(name: str):
                     ).get("display_name", "Unknown Affiliation")
                     for affil in author.get("affiliations", [])
                 ],
-                "orcid": (
-                    author.get("orcid", "/Unknown-ORCID") or "/Unknown-ORCID"
-                ).split("/")[-1],
+                "orcid": (normalize_orcid(author.get("orcid")) or ""),
             }
             for author in authors
         ]
@@ -211,6 +215,7 @@ async def get_nsf_coa(author: str, months: int = 48):
                 "first": first,
                 "middle": middle or "",
                 "last": last,
+                "orcid": normalize_orcid(collaborator["author"].get("orcid")),
                 "institution": inst,
                 "last_interaction_year": get_publication_year(
                     collaborator["last_interaction_date"]

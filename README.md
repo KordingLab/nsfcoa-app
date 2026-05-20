@@ -35,3 +35,4 @@ You will get a table of collaborators and their affiliations:
 ![complete table](docs/ui1.png)
 
 You can also download the table as a CSV file by pressing the "**Download CSV**" link.
+Enable the ORCID option before submitting to include co-author ORCIDs in the CSV.
