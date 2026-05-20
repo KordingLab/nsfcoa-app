@@ -41,6 +41,11 @@
         placeholder="'Jordan Matelsky' or '0000-0002-9470-760X'">
     <label for="oa-months">Months:</label>
     <input type="number" id="oa-months" name="oa-months" value=48 min="0" required>
+    <label>
+        <input type="checkbox" id="include-orcids">
+        Include ORCIDs
+    </label>
+    <br />
     <button onclick="getCollaborators()">Submit</button>
 
     <hr />
@@ -100,6 +105,7 @@
 
         const name = document.getElementById('oa-name').value;
         const months = parseInt(document.getElementById('oa-months').value);
+        const includeOrcids = document.getElementById('include-orcids').checked;
 
         // Queue up loading messages to let the user know things
         // are still happening. These intervals will be cleared when the fetch
@@ -139,6 +145,7 @@
                                 <th>Last</th>
                                 <th>Affiliation</th>
                                 <th>Last Interaction Year</th>
+                                ${includeOrcids ? '<th>ORCID</th>' : ''}
                             </tr>
                         </thead>
                         <tbody id="output-table-body"></tbody>
@@ -152,26 +159,38 @@
                         <td>${collaborator.last}</td>
                         <td>${collaborator.institution}</td>
                         <td>${collaborator.last_interaction_year}</td>
+                        ${includeOrcids ? `<a href="https://orcid.org/${collaborator.orcid}" target="_blank">${collaborator.orcid}</a>` : ''}
                     `;
                     table.querySelector('tbody').appendChild(row);
                 });
 
                 // Create CSV download link
+                const csvHeader = [
+                    'First',
+                    'Middle',
+                    'Last',
+                    'Affiliation',
+                    'Last Interaction Year'
+                ];
+                if (includeOrcids) {
+                    csvHeader.push('ORCID');
+                }
+
                 const csvRows = [
-                    [
-                        'First',
-                        'Middle',
-                        'Last',
-                        'Affiliation',
-                        'Last Interaction Year'
-                    ],
-                    ...data.collaborators.map(collaborator => ([
-                        collaborator.first,
-                        collaborator.middle,
-                        collaborator.last,
-                        collaborator.institution,
-                        collaborator.last_interaction_year
-                    ]))
+                    csvHeader,
+                    ...data.collaborators.map(collaborator => {
+                        const row = [
+                            collaborator.first,
+                            collaborator.middle,
+                            collaborator.last,
+                            collaborator.institution,
+                            collaborator.last_interaction_year
+                        ];
+                        if (includeOrcids) {
+                            row.push(collaborator.orcid);
+                        }
+                        return row;
+                    })
                 ];
                 const csv = csvRows
                     .map(row => row.map(escapeCsvValue).join(','))
